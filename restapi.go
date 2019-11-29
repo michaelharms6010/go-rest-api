@@ -5,9 +5,11 @@ import (
 	"log"
 	"net/http"
 	"encoding/json"
+	"github.com/gorilla/mux"
 )
 
 type Quote struct {
+	Id string `json:"Id"`
 	Content string `json:"quote"`
 	Speaker string `json:"speaker"`
 }
@@ -19,21 +21,52 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Homepage Endpoint hit")
 }
 
-func handleRequests() {
-	http.HandleFunc("/", homePage)
-	http.HandleFunc("/quotes", returnAllQuotes)
-	log.Fatal(http.ListenAndServe(":3000", nil))
-}
+
 
 func returnAllQuotes(w http.ResponseWriter, r *http.Request){
     fmt.Println("Endpoint Hit: returnAllArticles")
     json.NewEncoder(w).Encode(Quotes)
 }
 
+func returnSingleQuote(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: returnSingleQuote")
+    vars := mux.Vars(r)
+    id := vars["id"]
+
+    for _, quote := range Quotes {
+        if quote.Id == id {
+            json.NewEncoder(w).Encode(quote)
+        }
+    }
+}
+
+func deleteQuote(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: deleteQuote")
+    vars := mux.Vars(r)
+    id := vars["id"]
+
+    for index, quote := range Quotes {
+        if quote.Id == id {
+            Quotes = append(Quotes[:index], Quotes[index+1:]...)
+        }
+    }
+
+}
+
+func handleRequests() {
+	myRouter := mux.NewRouter().StrictSlash(true)
+	myRouter.HandleFunc("/", homePage)
+	myRouter.HandleFunc("/quotes", returnAllQuotes)
+	myRouter.HandleFunc("/quote/{id}", deleteQuote).Methods("DELETE")
+	myRouter.HandleFunc("/quote/{id}", returnSingleQuote)
+	
+	log.Fatal(http.ListenAndServe(":3000", myRouter))
+}
+
 func main() {
 	Quotes = []Quote{
-		Quote{Content: "You would make a ship sail against the winds and currents by lighting a bon-fire under her deck? I have no time for such nonsense.", Speaker: "Napoleon, on Robert Fulton's Steamship"},
-		Quote{Content: "Never trust a computer you can't throw out a window.", Speaker: "Steve Wozniak"},
+		Quote{Id: "1", Content: "You would make a ship sail against the winds and currents by lighting a bon-fire under her deck? I have no time for such nonsense.", Speaker: "Napoleon, on Robert Fulton's Steamship"},
+		Quote{Id: "2", Content: "Never trust a computer you can't throw out a window.", Speaker: "Steve Wozniak"},
 	}
 	
 	handleRequests()
